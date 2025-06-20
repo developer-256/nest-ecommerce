@@ -1,15 +1,20 @@
 import { Module } from '@nestjs/common';
+import { AppController } from './app.controller';
+import { AppService } from './app.service';
 import { MongooseModule } from '@nestjs/mongoose';
-import { TaskController } from './Modules/MongoModules/Task/task.controller';
-import { TaskService } from './Modules/MongoModules/Task/task.service';
-import { Task, taskSchema } from './DB/Models/MongoEntities/task.entity';
+import { validate } from './config/env_validation.config';
+import { ConfigModule } from '@nestjs/config';
+import { TaskModule } from './modules/task/task.module';
 
 @Module({
   imports: [
-    MongooseModule.forRoot('mongodb://127.0.0.1/new_nest'),
-    MongooseModule.forFeature([{ name: Task.name, schema: taskSchema }]),
+    ConfigModule.forRoot({
+      validate: validate,
+    }),
+    MongooseModule.forRoot(process.env.DATABASE_URL),
+    TaskModule,
   ],
-  controllers: [TaskController],
-  providers: [TaskService],
+  controllers: [AppController],
+  providers: [AppService],
 })
 export class AppModule {}
