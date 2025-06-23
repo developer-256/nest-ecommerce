@@ -1,6 +1,7 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { HydratedDocument } from 'mongoose';
+import { Role } from '../enum/roles.enum';
 
 export type UserDocument = HydratedDocument<User>;
 
@@ -27,6 +28,10 @@ export class User {
 
   @Prop({ required: true })
   hashedPassword: string;
+
+  @ApiProperty({ example: Role.User })
+  @Prop({ enum: Role, default: Role.User, required: false })
+  role: string;
 
   @ApiPropertyOptional()
   @Prop({ type: Object, required: false })

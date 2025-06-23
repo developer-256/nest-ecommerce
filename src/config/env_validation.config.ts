@@ -6,7 +6,7 @@ import { IsEnum, IsNumber, IsString, validateSync } from 'class-validator';
  * @info also add the variable name in .env.example and environment.d.ts
  */
 
-enum NODE_ENV_ENUM {
+export enum NODE_ENV_ENUM {
   DEVELOPMENT = 'development',
   TESTING = 'testing',
   PRODUCTION = 'production',
