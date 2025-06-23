@@ -21,10 +21,10 @@ import {
   ApiTags,
   ApiUnprocessableEntityResponse,
 } from '@nestjs/swagger';
-import { Task } from './entity/task.entity';
+import { Task } from './schema/task.schema';
 
 @ApiTags('Task')
-@Controller('/task')
+@Controller('task')
 export class TaskController {
   constructor(private readonly taskService: TaskService) {}
 

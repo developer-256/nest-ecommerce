@@ -8,7 +8,7 @@ import {
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
-import { Task, TaskDocument } from './entity/task.entity';
+import { Task, TaskDocument } from './schema/task.schema';
 import { CreateTaskDTO } from './dto/task.create.dto';
 import { UpdateTaskDTO } from './dto/task.update.dto';
 

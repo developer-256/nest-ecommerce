@@ -5,6 +5,7 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { validate } from './config/env_validation.config';
 import { ConfigModule } from '@nestjs/config';
 import { TaskModule } from './modules/task/task.module';
+import { UserModule } from './modules/user/user.module';
 
 @Module({
   imports: [
@@ -13,6 +14,7 @@ import { TaskModule } from './modules/task/task.module';
     }),
     MongooseModule.forRoot(process.env.DATABASE_URL),
     TaskModule,
+    UserModule,
   ],
   controllers: [AppController],
   providers: [AppService],
