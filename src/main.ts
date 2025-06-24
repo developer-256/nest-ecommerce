@@ -4,6 +4,7 @@ import { ValidationPipe } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { apiReference } from '@scalar/nestjs-api-reference';
 import * as cookieParser from 'cookie-parser';
+import { CookieName } from './modules/auth/enums/cookie_name.enum';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -11,6 +12,8 @@ async function bootstrap() {
     .setTitle('Ecommerce Nest JS')
     .setDescription('Ecommerce Nest JS api')
     .setVersion('1.0')
+    .addCookieAuth(CookieName.Refresh)
+    .addCookieAuth(CookieName.Authentication)
     .build();
 
   const document = SwaggerModule.createDocument(app, config);

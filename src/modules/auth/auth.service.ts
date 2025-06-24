@@ -1,12 +1,13 @@
 import { HttpStatus, Injectable, UnauthorizedException } from '@nestjs/common';
 import { UserService } from '../user/user.service';
-import { verify } from 'argon2';
+import { hash, verify } from 'argon2';
 import { Response } from 'express';
 import { JwtService } from '@nestjs/jwt';
 import { TokenPayload } from './interfaces/token.interface';
 import { Role } from '../user/enum/roles.enum';
 import { NODE_ENV_ENUM } from 'src/config/env_validation.config';
 import { LoginDTO } from './dto/login.dto';
+import { CookieName } from './enums/cookie_name.enum';
 
 @Injectable()
 export class AuthService {
@@ -17,10 +18,14 @@ export class AuthService {
   async login(loginDTO: LoginDTO, response: Response) {
     const user = await this.verifyUser(loginDTO.email, loginDTO.password);
 
-    const expiresInSec = Number.parseInt(
-      process.env.ACCESS_TOKEN_EXPIRY_IN_SEC,
+    const expiresAccessToken = new Date(
+      Date.now() +
+        Number.parseInt(process.env.ACCESS_TOKEN_EXPIRY_IN_SEC) * 1000,
     );
-    const expiresAccessToken = new Date(Date.now() + expiresInSec * 1000);
+    const expiresRefreshToken = new Date(
+      Date.now() +
+        Number.parseInt(process.env.REFRESH_TOKEN_EXPIRY_IN_SEC) * 1000,
+    );
 
     const payload: TokenPayload = {
       userID: user._id,
@@ -32,11 +37,25 @@ export class AuthService {
       secret: process.env.ACCESS_TOKEN_SECRET,
       expiresIn: `${process.env.ACCESS_TOKEN_EXPIRY_IN_SEC}s`,
     });
+    const refreshToken = this.jwtService.sign(payload, {
+      secret: process.env.REFRESH_TOKEN_SECRET,
+      expiresIn: `${process.env.REFRESH_TOKEN_EXPIRY_IN_SEC}s`,
+    });
 
-    response.cookie('Authentication', accessToken, {
+    await this.userService.findOneAndUpdateUser(
+      { _id: user._id },
+      { $set: { hashedRefreshToken: await hash(refreshToken) } },
+    );
+
+    response.cookie(CookieName.Authentication, accessToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === NODE_ENV_ENUM.PRODUCTION,
       expires: expiresAccessToken,
+    });
+    response.cookie(CookieName.Refresh, refreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === NODE_ENV_ENUM.PRODUCTION,
+      expires: expiresRefreshToken,
     });
 
     return {
@@ -58,6 +77,26 @@ export class AuthService {
       return user;
     } catch (error) {
       throw new UnauthorizedException('Invalid Email or Password');
+    }
+  }
+
+  async verifyUserRefreshToken(refreshToken: string, email: string) {
+    try {
+      const user = await this.userService.getUser({ email });
+      if (user.hashedRefreshToken) {
+        const isAuthenticated = await verify(
+          user.hashedRefreshToken,
+          refreshToken,
+        );
+        if (!isAuthenticated) {
+          throw new UnauthorizedException();
+        }
+        return user;
+      } else {
+        throw new UnauthorizedException();
+      }
+    } catch (error) {
+      throw new UnauthorizedException('Invalid Refresh Token');
     }
   }
 }

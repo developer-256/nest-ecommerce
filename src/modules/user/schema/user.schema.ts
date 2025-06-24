@@ -29,6 +29,9 @@ export class User {
   @Prop({ required: true })
   hashedPassword: string;
 
+  @Prop({ required: false })
+  hashedRefreshToken?: string;
+
   @ApiProperty({ example: Role.User })
   @Prop({ enum: Role, default: Role.User, required: false })
   role: string;

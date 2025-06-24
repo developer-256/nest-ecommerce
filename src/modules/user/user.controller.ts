@@ -23,7 +23,7 @@ export class UserController {
   @Get()
   async getUser(@CurrentUser() user: User) {
     const userResponse = await this.userService.getUser({ email: user.email });
-    const { hashedPassword, ...safeUser } = userResponse;
+    const { hashedPassword, hashedRefreshToken, ...safeUser } = userResponse;
     return safeUser;
   }
 }
