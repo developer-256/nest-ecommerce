@@ -22,6 +22,12 @@ export class User {
   @Prop({ unique: true })
   email: string;
 
+  @Prop({ required: false, default: false })
+  isVerified: boolean;
+
+  @Prop({ required: false })
+  verificationToken?: string;
+
   @ApiProperty({ example: 'someone' })
   @Prop()
   name?: string;

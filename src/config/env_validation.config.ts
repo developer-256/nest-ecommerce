@@ -21,6 +21,21 @@ class EnvironmentVariables {
 
   @IsNumber()
   APP_LISTEN_PORT: number;
+
+  @IsString()
+  ACCESS_TOKEN_SECRET: string;
+  @IsNumber()
+  ACCESS_TOKEN_EXPIRY_IN_SEC: number;
+
+  @IsString()
+  REFRESH_TOKEN_SECRET: string;
+  @IsNumber()
+  REFRESH_TOKEN_EXPIRY_IN_SEC: number;
+
+  @IsString()
+  GMAIL_SENDER_EMAIL: string;
+  @IsString()
+  GMAIL_APP_PASSWORD: string;
 }
 
 export function validate(config: Record<string, unknown>) {

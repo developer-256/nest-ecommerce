@@ -11,5 +11,8 @@ namespace NodeJS {
 
     REFRESH_TOKEN_SECRET: string;
     REFRESH_TOKEN_EXPIRY_IN_SEC: string;
+
+    GMAIL_SENDER_EMAIL: string;
+    GMAIL_APP_PASSWORD: string;
   }
 }

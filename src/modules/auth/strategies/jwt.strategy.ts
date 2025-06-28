@@ -4,7 +4,11 @@ import { TokenPayload } from '../interfaces/token.interface';
 import { UserService } from 'src/modules/user/user.service';
 import { GuardName } from '../enums/guard_name.enum';
 import { Request } from 'express';
-import { Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { CookieName } from '../enums/cookie_name.enum';
 
 @Injectable()
@@ -20,6 +24,16 @@ export class JwtStrategy extends PassportStrategy(Strategy, GuardName.JWT) {
   }
 
   async validate(payload: TokenPayload) {
-    return await this.userService.getUser({ email: payload.email });
+    const user = (
+      await this.userService.getUser({ email: payload.email })
+    )?.toObject();
+    if (!user) {
+      throw new BadRequestException('User Not Found');
+    }
+    if (!user.isVerified) {
+      throw new UnauthorizedException('Your Email is not verified');
+    }
+
+    return user;
   }
 }

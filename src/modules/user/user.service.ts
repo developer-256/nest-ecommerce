@@ -15,26 +15,17 @@ export class UserService {
   constructor(@InjectModel(User.name) private userModel: Model<UserDocument>) {}
 
   async createUser(createUserDto: CreateUserDto) {
-    const { email, password, name } = createUserDto;
-    const IsEmailTaken = await this.userModel.findOne({ email });
-    if (IsEmailTaken) {
-      throw new ConflictException('Email already taken');
-    }
-
-    return await this.userModel.create({
+    const { email, password, name, verificationToken } = createUserDto;
+    return this.userModel.create({
       name,
       email,
+      verificationToken,
       hashedPassword: await hash(password),
     });
   }
 
   async getUser(query: FilterQuery<User>) {
-    const user = (await this.userModel.findOne(query))?.toObject();
-    if (!user) {
-      throw new NotFoundException('User not found');
-    }
-
-    return user;
+    return this.userModel.findOne(query);
   }
 
   async findOneAndUpdateUser(
