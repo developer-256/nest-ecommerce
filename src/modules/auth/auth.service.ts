@@ -18,6 +18,7 @@ import { CookieName } from './enums/cookie_name.enum';
 import { SignupDto } from './dto/signup.dto';
 import { MailService } from '../other/mailer/mail.service';
 import { verificationEmail } from 'src/common/template/verification_email.template';
+import { User } from '../user/schema/user.schema';
 
 @Injectable()
 export class AuthService {
@@ -59,7 +60,7 @@ export class AuthService {
 
         return {
           success: true,
-          status: HttpStatus.OK,
+          statusCode: HttpStatus.OK,
           message: 'Check You Email. (Check Spam folder too)',
         };
       } catch (error) {
@@ -69,7 +70,7 @@ export class AuthService {
       }
     }
 
-    if (isAlreadyUser && isAlreadyUser.isVerified) {
+    if (isAlreadyUser && isAlreadyUser.isEmailVerified) {
       throw new BadRequestException(
         'You already have an account. Signin Instead',
       );
@@ -92,7 +93,7 @@ export class AuthService {
 
       return {
         success: true,
-        status: HttpStatus.OK,
+        statusCode: HttpStatus.OK,
         message: 'Check You Email. (Check Spam folder too)',
       };
     } catch (error) {
@@ -103,29 +104,40 @@ export class AuthService {
   }
 
   async verifyEmail(token: string) {
-    const decoded = this.jwtService.verify(token, {
-      secret: process.env.ACCESS_TOKEN_SECRET,
-    });
+    let decoded;
+    try {
+      decoded = this.jwtService.verify(token, {
+        secret: process.env.ACCESS_TOKEN_SECRET,
+      });
+    } catch (error) {
+      throw new BadRequestException('Invalid Token. Signup again');
+    }
+
+    if (!decoded) {
+      throw new BadRequestException('Invalid Token. Signup again');
+    }
     if (!decoded.email) {
-      throw new UnauthorizedException('Invalid Token');
+      throw new UnauthorizedException('Invalid Token. Signup again');
     }
 
     const user = await this.userService.getUser({ email: decoded.email });
     if (!user) {
       throw new BadRequestException('User Not Found');
     }
-    if (user.isVerified) {
+    if (user.isEmailVerified) {
       throw new BadRequestException('Your email is already verified');
     }
 
     try {
+      console.log('hello');
+
       user.verificationToken = '';
-      user.isVerified = true;
+      user.isEmailVerified = true;
       await user.save();
 
       return {
         success: true,
-        status: HttpStatus.OK,
+        statusCode: HttpStatus.OK,
         message: 'Email Successfully Verified. You can now Login',
       };
     } catch (error) {
@@ -134,11 +146,64 @@ export class AuthService {
   }
 
   async login(loginDTO: LoginDTO, response: Response) {
-    const user = await this.verifyUser(loginDTO.email, loginDTO.password);
-    if (!user.isVerified) {
-      throw new UnauthorizedException('Your email is not verified');
+    const user = await this.verifyUserPassword(
+      loginDTO.email,
+      loginDTO.password,
+    );
+    if (!user.isEmailVerified) {
+      throw new UnauthorizedException(
+        'Your email is not verified. Signup again',
+      );
     }
 
+    await this.generateTokens(user, response);
+
+    return {
+      success: true,
+      statusCode: HttpStatus.OK,
+      message: 'Successfully Logged In',
+    };
+  }
+
+  async logout(user: User, response: Response) {
+    try {
+      await this.userService.findOneAndUpdateUser(
+        { email: user.email },
+        { hashedRefreshToken: '' },
+      );
+
+      response.cookie(CookieName.Authentication, null);
+      response.cookie(CookieName.Refresh, null);
+
+      return {
+        success: true,
+        statusCode: HttpStatus.OK,
+        message: 'You are successfully logged out',
+      };
+    } catch (error) {
+      throw new InternalServerErrorException('Something Went Wrong');
+    }
+  }
+
+  async verifyUserPassword(email: string, password: string) {
+    try {
+      const user = (await this.userService.getUser({ email }))?.toObject();
+      if (!user) {
+        throw new Error('User Not Found');
+      }
+
+      const isAuthenticated = await verify(user.hashedPassword, password);
+      if (!isAuthenticated) {
+        throw new UnauthorizedException();
+      }
+
+      return user;
+    } catch (error) {
+      throw new UnauthorizedException('Invalid Email or Password');
+    }
+  }
+
+  async generateTokens(user: User, response: Response) {
     const expiresAccessToken = new Date(
       Date.now() +
         Number.parseInt(process.env.ACCESS_TOKEN_EXPIRY_IN_SEC) * 1000,
@@ -164,7 +229,7 @@ export class AuthService {
     });
 
     await this.userService.findOneAndUpdateUser(
-      { _id: user._id },
+      { email: user.email },
       { $set: { hashedRefreshToken: await hash(refreshToken) } },
     );
 
@@ -178,52 +243,30 @@ export class AuthService {
       secure: process.env.NODE_ENV === NODE_ENV_ENUM.PRODUCTION,
       expires: expiresRefreshToken,
     });
-
-    return {
-      success: true,
-      status: HttpStatus.OK,
-      message: 'Successfully Logged In',
-    };
-  }
-
-  async verifyUser(email: string, password: string) {
-    try {
-      const user = (await this.userService.getUser({ email }))?.toObject();
-      if (!user) {
-        throw new Error('User Not Found');
-      }
-
-      const isAuthenticated = await verify(user.hashedPassword, password);
-      if (!isAuthenticated) {
-        throw new UnauthorizedException();
-      }
-
-      return user;
-    } catch (error) {
-      throw new UnauthorizedException('Invalid Email or Password');
-    }
   }
 
   async verifyUserRefreshToken(refreshToken: string, email: string) {
-    try {
-      const user = (await this.userService.getUser({ email }))?.toObject();
-      if (!user) {
-        throw new Error('User Not Found');
-      }
+    const user = (await this.userService.getUser({ email }))?.toObject();
+    if (!user) {
+      throw new UnauthorizedException('User Not Found');
+    }
 
-      if (user.hashedRefreshToken) {
-        const isAuthenticated = await verify(
-          user.hashedRefreshToken,
-          refreshToken,
-        );
-        if (!isAuthenticated) {
-          throw new UnauthorizedException();
-        }
-        return user;
-      } else {
-        throw new UnauthorizedException();
+    if (!user.isEmailVerified) {
+      throw new UnauthorizedException(
+        'Your email is not verified. Signup again',
+      );
+    }
+
+    if (user.hashedRefreshToken) {
+      const isAuthenticated = await verify(
+        user.hashedRefreshToken,
+        refreshToken,
+      );
+      if (!isAuthenticated) {
+        throw new UnauthorizedException('Invalid Refresh Token');
       }
-    } catch (error) {
+      return user;
+    } else {
       throw new UnauthorizedException('Invalid Refresh Token');
     }
   }

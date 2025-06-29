@@ -23,7 +23,7 @@ export class User {
   email: string;
 
   @Prop({ required: false, default: false })
-  isVerified: boolean;
+  isEmailVerified: boolean;
 
   @Prop({ required: false })
   verificationToken?: string;

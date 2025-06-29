@@ -25,9 +25,11 @@ export class JWTRefreshStrategy extends PassportStrategy(
 
   validate(request: Request, payload: TokenPayload) {
     const refreshToken = request.cookies?.[CookieName.Refresh];
+
     if (!refreshToken) {
       throw new UnauthorizedException('Invalid Refresh Token');
     }
+
     return this.authService.verifyUserRefreshToken(refreshToken, payload.email);
   }
 }

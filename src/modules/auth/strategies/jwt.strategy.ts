@@ -30,8 +30,10 @@ export class JwtStrategy extends PassportStrategy(Strategy, GuardName.JWT) {
     if (!user) {
       throw new BadRequestException('User Not Found');
     }
-    if (!user.isVerified) {
-      throw new UnauthorizedException('Your Email is not verified');
+    if (!user.isEmailVerified) {
+      throw new UnauthorizedException(
+        'Your email is not verified. Signup again',
+      );
     }
 
     return user;
